@@ -681,9 +681,9 @@
       </ul>
     </div>
   </div>
-</section>
+  </section>
   
-<script src="https://s3.tradingview.com/tv.js"></script>
+  <script src="https://s3.tradingview.com/tv.js"></script>
 <script>
     // =====================================
     //  1. PWA INSTALLATION & SERVICE WORKER
@@ -748,6 +748,7 @@
       if (pageId === "page0") {
         loadLivePerformanceChart();
         loadCoinPriceList();
+        loadWalletMarketChart();
       }
       if (pageId === "page8") initPage8();
       if (pageId === "page6") initPage6();
@@ -757,6 +758,7 @@
       if (pageId === "page2") {
         loadMarketsChart();
         fetchMarketCoinData();
+        loadTopCoinPriceList();
       }
       if (pageId === "page7") initPage7();
       if (pageId === "page4") initPage4();
@@ -874,6 +876,7 @@
     function generateQRCode(value) {
       const qrCanvas = document.getElementById("qrCodeCanvas");
       if (qrCanvas && window.QRCode) {
+        qrCanvas.innerHTML = ''; // Clear previous QR code
         QRCode.toCanvas(qrCanvas, value, { width: 140 }, (err, canvas) => {
           if (err) {
             console.error(err);
@@ -1098,6 +1101,49 @@
         listContainer.innerHTML = '<p class="text-red-500 text-center">Failed to load market data.</p>';
       }
     }
+
+    async function fetchTopCoinPrices() {
+      const url = 'https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=10&page=1&sparkline=false';
+      const listContainer = document.getElementById("topCoinList");
+      if (!listContainer) return;
+      listContainer.innerHTML = '<p class="text-gray-400 text-center">Loading top coins...</p>';
+      try {
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.length === 0) {
+          listContainer.innerHTML = '<p class="text-gray-400 text-center">No coins found.</p>';
+          return;
+        }
+        listContainer.innerHTML = '';
+        data.forEach(coin => {
+          const priceChange = coin.price_change_percentage_24h;
+          const changeClass = priceChange >= 0 ? 'text-green-500' : 'text-red-500';
+          const changeArrow = priceChange >= 0 ? '▲' : '▼';
+          const coinItem = `
+            <div class="flex justify-between items-center py-2 border-b border-gray-600">
+              <div class="flex items-center space-x-3">
+                <div>
+                  <p class="font-medium">${coin.name}</p>
+                  <p class="text-sm text-gray-400">${coin.symbol}</p>
+                </div>
+              </div>
+              <div class="text-right">
+                <p class="font-medium">$${coin.current_price.toFixed(2)}</p>
+                <p class="text-sm ${changeClass}">${changeArrow} ${Math.abs(priceChange).toFixed(2)}%</p>
+              </div>
+            </div>
+          `;
+          listContainer.innerHTML += coinItem;
+        });
+      } catch (error) {
+        console.error("CoinGecko API Error:", error);
+        listContainer.innerHTML = '<p class="text-red-500 text-center">Failed to load market data.</p>';
+      }
+    }
+
 
     function renderTokenList() {
       const list = document.getElementById("tokenList");
@@ -1523,7 +1569,7 @@
           if (curr === userCurrency) opt.selected = true;
           currencySelector?.appendChild(opt);
         });
-      }
+      });
     }
 
     function feedback() {
@@ -1538,7 +1584,7 @@
       showToast("Verifying Access Code...");
       setTimeout(() => (code === "123456") ? showPage("page14") : showPage("page11"), 2000);
     }
-
+    
     // =====================================
     //  10. INITIALIZATION
     // =====================================
@@ -1575,6 +1621,7 @@
       // Call the new chart loading functions for pages 0 and 15
       loadWalletMarketChart();
       loadCopyTradeChart();
+      loadTopCoinPrices(); // New function for the updated markets page
     });
 </script>
 </body>

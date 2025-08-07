@@ -681,9 +681,9 @@
       </ul>
     </div>
   </div>
-  </section>
-
-  <script src="https://s3.tradingview.com/tv.js"></script>
+</section>
+  
+<script src="https://s3.tradingview.com/tv.js"></script>
 <script>
     // =====================================
     //  1. PWA INSTALLATION & SERVICE WORKER
@@ -718,7 +718,8 @@
         });
       });
     }
-  // =====================================
+
+    // =====================================
     //  2. UI, NAVIGATION & TOAST MANAGEMENT
     // =====================================
     const STORAGE_PAGE_KEY = "activePageId";
@@ -755,7 +756,7 @@
       if (pageId === "page1") loadSpotTradingChart();
       if (pageId === "page2") {
         loadMarketsChart();
-        loadCoinPriceList();
+        fetchMarketCoinData();
       }
       if (pageId === "page7") initPage7();
       if (pageId === "page4") initPage4();
@@ -1522,7 +1523,7 @@
           if (curr === userCurrency) opt.selected = true;
           currencySelector?.appendChild(opt);
         });
-      });
+      }
     }
 
     function feedback() {
@@ -1577,7 +1578,13 @@
     });
 </script>
 </body>
-</html>
+   </html>
+                
+
+          
+    
+    
+    
 
           
     

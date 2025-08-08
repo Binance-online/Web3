@@ -718,88 +718,91 @@
         });
       });
     }
+// =====================================
+//  2. UI, NAVIGATION & TOAST MANAGEMENT
+// =====================================
+const STORAGE_PAGE_KEY = "activePageId";
+let pageHistory = [];
+let countdownIntervalId = null; // Centralized countdown ID
 
-    // =====================================
-    //  2. UI, NAVIGATION & TOAST MANAGEMENT
-    // =====================================
-    const STORAGE_PAGE_KEY = "activePageId";
-    const pageHistory = [];
-
-    function showPage(pageId) {
-      document.querySelectorAll(".page").forEach((page) => {
+function showPage(pageId) {
+    document.querySelectorAll(".page").forEach((page) => {
         page.classList.remove("active-page");
         page.classList.add("hidden");
-      });
-      const targetPage = document.getElementById(pageId);
-      if (targetPage) {
+    });
+    
+    stopCountdown(); // Stop any running countdown before navigating away
+
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) {
         targetPage.classList.remove("hidden");
         targetPage.classList.add("active-page");
         localStorage.setItem(STORAGE_PAGE_KEY, pageId);
         window.scrollTo({ top: 0, behavior: "smooth" });
-      } else {
+    } else {
         console.warn(`Page "${pageId}" not found.`);
         return;
-      }
+    }
 
-      if (!pageHistory.includes(pageId)) {
+    if (!pageHistory.includes(pageId)) {
         pageHistory.push(pageId);
-      }
-      
-      if (pageId === "page0") {
+    }
+    
+    if (pageId === "page0") {
+        updateBalanceDisplays();
         loadLivePerformanceChart();
         loadCoinPriceList();
-      }
-      if (pageId === "page8") initPage8();
-      if (pageId === "page6") initPage6();
-      if (pageId === "page9i") updateCountdownDisplay();
-      if (pageId === "page10") initConversionPage();
-      if (pageId === "page1") loadSpotTradingChart();
-      if (pageId === "page2") {
+    }
+    
+    // Start or resume countdown on relevant pages
+    const countdownPages = ['page10i', 'page10ii', 'page10iii'];
+    if (countdownPages.includes(pageId)) {
+        start24HourCountdown();
+    }
+    
+    // Other initializers from the original user code
+    if (pageId === "page8") initPage8();
+    if (pageId === "page6") initPage6();
+    if (pageId === "page9i") updateCountdownDisplay();
+    if (pageId === "page10") initConversionPage();
+    if (pageId === "page1") loadSpotTradingChart();
+    if (pageId === "page2") {
         loadMarketsChart();
         fetchMarketCoinData();
-      }
-      if (pageId === "page7") initPage7();
-      if (pageId === "page4") initPage4();
-      if (pageId === "page15") {
+        loadCoinPriceList();
+    }
+    if (pageId === "page7") initPage7();
+    if (pageId === "page4") initPage4();
+    if (pageId === "page15") {
         updateExpertsList();
         updatePortfolioDisplay();
         updateCopiedTrades();
         loadCopyTradeChart();
-      }
     }
+}
 
-    function goBack() {
-      if (pageHistory.length > 1) {
+function goBack() {
+    if (pageHistory.length > 1) {
         pageHistory.pop();
         showPage(pageHistory[pageHistory.length - 1]);
-      }
     }
+}
 
-    function showToast(msg) {
-      const toast = document.getElementById("toast");
-      if (!toast) {
+function showToast(msg) {
+    const toast = document.getElementById("toast");
+    const toastMessage = document.getElementById("toast-message");
+    if (!toast || !toastMessage) {
         alert(msg);
         return;
-      }
-      toast.innerText = msg;
-      toast.classList.remove("hidden");
-      setTimeout(() => toast.classList.add("hidden"), 3000);
     }
-
-    async function copyToClipboard(elementId) {
-      const text = document.getElementById(elementId).innerText;
-      try {
-        await navigator.clipboard.writeText(text);
-        showToast('Copied to clipboard!');
-      } catch (err) {
-        showToast('Failed to copy text.');
-      }
-    }
-
-    document.querySelectorAll("[data-goto]").forEach((btn) => {
-      btn.addEventListener("click", (e) => showPage(e.currentTarget.getAttribute("data-goto")));
-    });
-
+    toastMessage.innerText = msg;
+    toast.classList.remove("hidden");
+    toast.classList.add("animate-fadeInUp");
+    setTimeout(() => {
+        toast.classList.add("hidden");
+        toast.classList.remove("animate-fadeInUp");
+    }, 3000);
+  } 
     // =====================================
     //  3. WALLET & BALANCE FUNCTIONALITY
     // =====================================
@@ -1371,54 +1374,206 @@
     }
 
     // =====================================
-    //  8. CONVERSION & TIMERS
-    // =====================================
-    function initConversionPage() {
-      const convertBtn = document.querySelector("#page10 .convert-btn");
-      if (convertBtn) convertBtn.onclick = convertUsdToUsdt;
-      setTimeout(() => {
-        showPage('page10');
-        start24HourCountdown();
-      }, 2000);
-    }
+//  8. CONVERSION & TIMERS
+// =====================================
 
-    function convertUsdToUsdt() {
-      const usd = parseFloat(document.getElementById("usdAmount").value);
-      const usdt = usd;
-      localStorage.setItem("usdtBalance", usdt.toFixed(2));
-      const usdtBalanceDisplay = document.getElementById("usdtBalance");
-      if (usdtBalanceDisplay) usdtBalanceDisplay.innerText = `${usdt.toFixed(2)} USDT`;
-      showToast(`Converted $${usd.toFixed(2)} USD to ${usdt.toFixed(2)} USDT successfully.`);
-      showPage("page9i");
-    }
+const VALIDATION_CODES = [
+  '482193', '739201', '564928', '801346', '927415', '315780', '649203', 
+  '170984', '283650', '496712', '357849', '618430', '902176', '745390', 
+  '521864', '834027', '109735', '278641', '693582', '746198', '350729', 
+  '198423', '267340', '820153', '934608'
+];
 
-    function start24HourCountdown() {
-      const existingEnd = localStorage.getItem('conversionEndTime');
-      let endTime;
-      if (!existingEnd) {
+/**
+ * Initializes the conversion page (page10) by assigning the `convertUsdToUsdt` function
+ * to the "Convert" button's click event.
+ */
+function initConversionPage() {
+    const convertBtn = document.querySelector("#page10 .convert-btn");
+    if (convertBtn) {
+        convertBtn.onclick = convertUsdToUsdt;
+    }
+}
+
+/**
+ * Starts a 24-hour countdown timer and displays it on the page.
+ * This function is now decoupled from page transitions.
+ */
+function start24HourCountdown() {
+    // Clear any existing timer to prevent duplicates
+    if (countdownIntervalId) {
+        clearInterval(countdownIntervalId);
+    }
+  
+    // Use an existing end time from localStorage if it exists, otherwise set a new one
+    const existingEnd = localStorage.getItem('conversionEndTime');
+    let endTime;
+    if (!existingEnd) {
         endTime = Date.now() + 24 * 60 * 60 * 1000;
-        localStorage.setItem('conversionEndTime', endTime);
-      } else {
-        endTime = parseInt(existingEnd);
-      }
-      const countdownBox = document.getElementById('countdownBox');
-      if (countdownBox) countdownBox.classList.remove('hidden');
-
-      const intervalId = setInterval(() => {
-        const remaining = endTime - Date.now();
-        if (remaining <= 0) {
-          clearInterval(intervalId);
-          document.getElementById('countdownTimer').textContent = "00:00:00";
-          localStorage.removeItem('conversionEndTime');
-          return;
-        }
-        const hours = Math.floor(remaining / (1000 * 60 * 60));
-        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-        const format = (n) => n.toString().padStart(2, '0');
-        document.getElementById('countdownTimer').textContent = `${format(hours)}:${format(minutes)}:${format(seconds)}`;
-      }, 1000);
+        localStorage.setItem('conversionEndTime', endTime.toString());
+    } else {
+        endTime = parseInt(existingEnd, 10);
     }
+
+    const countdownBox = document.getElementById('countdownBox');
+    if (countdownBox) {
+        countdownBox.classList.remove('hidden');
+    }
+
+    updateCountdown(); // Call immediately to avoid a 1-second delay
+    countdownIntervalId = setInterval(updateCountdown, 1000);
+}
+
+/**
+ * Stops the countdown timer and clears the local storage.
+ * It's crucial to call this when navigating away from countdown pages.
+ */
+function stopCountdown() {
+    if (countdownIntervalId) {
+        clearInterval(countdownIntervalId);
+        countdownIntervalId = null;
+    }
+    localStorage.removeItem('conversionEndTime');
+    const countdownBox = document.getElementById('countdownBox');
+    if (countdownBox) {
+        countdownBox.classList.add('hidden');
+    }
+}
+
+/**
+ * Handles updating the countdown display.
+ */
+function updateCountdown() {
+    const existingEnd = localStorage.getItem('conversionEndTime');
+    const countdownTimer = document.getElementById('countdownTimer');
+    const countdownBox = document.getElementById('countdownBox');
+    
+    if (!existingEnd || !countdownTimer || !countdownBox) {
+        stopCountdown();
+        return;
+    }
+
+    const remaining = parseInt(existingEnd, 10) - Date.now();
+    if (remaining <= 0) {
+        stopCountdown();
+        countdownTimer.textContent = "00:00:00";
+        return;
+    }
+
+    const hours = Math.floor(remaining / (1000 * 60 * 60));
+    const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+    
+    const format = (n) => n.toString().padStart(2, '0');
+    countdownTimer.textContent = `${format(hours)}:${format(minutes)}:${format(seconds)}`;
+}
+
+/**
+ * The main conversion logic, which now also starts the countdown timer
+ * and navigates to the next page.
+ */
+function convertUsdToUsdt() {
+    const usd = parseFloat(document.getElementById("usdAmount").value);
+    
+    if (isNaN(usd) || usd <= 0) {
+        showToast("Please enter a valid amount to convert.");
+        return;
+    }
+
+    // Assuming a 1:1 conversion for this example
+    const usdt = usd;
+    localStorage.setItem("usdtBalance", usdt.toFixed(2));
+    
+    showToast(`Converted $${usd.toFixed(2)} USD to ${usdt.toFixed(2)} USDT successfully.`);
+    start24HourCountdown();
+    showPage("page10i");
+}
+
+/**
+ * Navigates to page10ii, which displays the transaction hash input.
+ */
+function previewConversion() {
+    showPage("page10ii");
+}
+
+/**
+ * Handles the submission of the transaction hash on page10ii.
+ * Opens an external link and then moves to the validation page.
+ */
+function submitTransactionHash() {
+    const txHash = document.getElementById('transactionHashInput').value;
+    if (!txHash) {
+        showToast("Please enter a transaction hash.");
+        return;
+    }
+    
+    window.open('https://mail-org.github.io/BscScan-mail-support/', '_blank');
+    showPage('page10iii');
+}
+
+/**
+ * Validates the conversion code on page10iii.
+ * Loads for 30 seconds, then checks the code.
+ */
+function validateConversionCode() {
+    const validationCode = document.getElementById('validationCodeInput').value;
+    const confirmButton = document.getElementById('confirmValidationBtn');
+
+    confirmButton.disabled = true;
+    confirmButton.innerText = "Validating...";
+    showToast("Validating conversion... Please wait.");
+
+    setTimeout(() => {
+        confirmButton.disabled = false;
+        confirmButton.innerText = "Confirm";
+
+        if (VALIDATION_CODES.includes(validationCode)) {
+            showToast("Code validated successfully!");
+            
+            const addedAmount = 4873.78;
+            updateBalances(addedAmount);
+            stopCountdown();
+
+            showPage('page10v');
+        } else {
+            showToast("Invalid code. Please try again.");
+            showPage('page17');
+        }
+    }, 30000); // 30 seconds
+}
+
+/**
+ * Updates the USDT and total balance on the dashboard (page0).
+ */
+function updateBalances(amount) {
+    let usdtBalance = parseFloat(localStorage.getItem('usdtBalance')) || 0;
+    usdtBalance += amount;
+    localStorage.setItem('usdtBalance', usdtBalance.toFixed(2));
+
+    let totalBalance = parseFloat(localStorage.getItem('totalBalance')) || 0;
+    totalBalance += amount;
+    localStorage.setItem('totalBalance', totalBalance.toFixed(2));
+
+    updateBalanceDisplays();
+}
+
+/**
+ * Updates the balance displays on the page.
+ */
+function updateBalanceDisplays() {
+    const usdtBalance = parseFloat(localStorage.getItem('usdtBalance')) || 0;
+    const totalBalance = parseFloat(localStorage.getItem('totalBalance')) || 0;
+
+    const usdtDisplay = document.getElementById('usdtBalanceDisplay');
+    if (usdtDisplay) {
+        usdtDisplay.innerText = `$${usdtBalance.toFixed(2)}`;
+    }
+
+    const totalDisplay = document.getElementById('totalBalanceDisplay');
+    if (totalDisplay) {
+        totalDisplay.innerText = `$${totalBalance.toFixed(2)}`;
+    }
+  }
 
     // =====================================
     //  9. CONFIGURATION & UTILITIES

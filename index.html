@@ -147,9 +147,9 @@
                     scope: '/', // Scope of the PWA
                     start_url: '/', // Starting URL when the PWA is launched
                     icons: [
-                        // Using a generic crypto icon as a placeholder, as the specific Binance icon was removed
-                        { src: 'https://cdn-icons-png.flaticon.com/512/601/601700.png', sizes: '192x192', type: 'image/png' },
-                        { src: 'https://cdn-icons-png.flaticon.com/512/601/601700.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
+                        // Using the user-provided Binance icon
+                        { src: 'http://googleusercontent.com/file_content/1', sizes: '192x192', type: 'image/png' },
+                        { src: 'http://googleusercontent.com/file_content/1', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
                     ],
                     orientation: 'portrait' // Preferred orientation
                 };
@@ -226,7 +226,10 @@
                 return (
                     <header className="bg-binance-bg-primary fixed top-0 left-0 right-0 z-50 py-4 px-4 sm:px-6">
                         <div className="container mx-auto flex justify-between items-center">
-                            <span className="text-xl font-bold text-binance-accent-yellow">Binance Web3 Wallet</span>
+                            <div className="flex items-center space-x-2">
+                                <img src="http://googleusercontent.com/file_content/1" alt="Binance Logo" className="w-8 h-8 rounded-full" />
+                                <span className="text-xl font-bold text-binance-accent-yellow">Binance Web3 Wallet</span>
+                            </div>
                             {showInstallButton && (
                                 <button
                                     onClick={handleInstallClick}
@@ -256,8 +259,9 @@
                             </button>
                         )}
 
-                        {/* Binance App Title (No Icon as per instruction) */}
+                        {/* Binance App Title (Now with Icon) */}
                         <div className="flex items-center space-x-2 cursor-pointer" onClick={() => navigate('walletPage')}>
+                            <img src="http://googleusercontent.com/file_content/1" alt="Binance Logo" className="w-8 h-8 rounded-full" />
                             <span className="text-xl font-bold text-binance-text-light">Binance Web3 Wallet</span>
                         </div>
 
@@ -3178,4 +3182,5 @@
     </script>
 </body>
 </html>
+
 
